@@ -105,6 +105,7 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be mines.
         """
+        # Return all cells if all cells are mines
         if len(self.cells) == self.count and self.count > 0:
             return self.cells
         else:
@@ -114,6 +115,7 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be safe.
         """
+        # Return all cells if no mines are in them
         if self.count == 0 and len(self.cells) > 0:
             return self.cells
         else:
@@ -245,7 +247,11 @@ class MinesweeperAI():
         This function may use the knowledge in self.mines, self.safes
         and self.moves_made, but should not modify any of those values.
         """
-        raise NotImplementedError
+
+        # All saves moves that are not have already been made
+        safeNotMade = self.safes - self.moves_made
+        # Return random safe move
+        return random.choice(safeNotMade)
 
     def make_random_move(self):
         """
@@ -254,4 +260,11 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        raise NotImplementedError
+        allMoves = set()
+        for i in range(self.height):
+            for j in range(self.width):
+                allMoves.add((i, j))
+
+        movesAvailable = allMoves - self.moves_made - self.mines
+        # Return a random move from moves available
+        return random.choice(movesAvailable)
