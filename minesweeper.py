@@ -128,6 +128,8 @@ class Sentence():
         """
         # Delete the cell from self.cells
         # Decrease the self.count
+        if cell not in self.cells:
+            return
         self.cells.remove(cell)
         self.count -= 1
 
@@ -136,6 +138,8 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be safe.
         """
+        if cell not in self.cells:
+            return
         # Delete the cell from self.cells
         self.cells.remove(cell)
 
@@ -232,8 +236,8 @@ class MinesweeperAI():
             for sentence2 in self.knowledge:
                 if sentence1 != sentence2:
                     # Check if sentence1 is subset of sentence2
-                    if sentence1.issubset(sentence2):
-                        diffSet = sentence2 - sentence1
+                    if sentence1.cells.issubset(sentence2.cells):
+                        diffSet = sentence2.cells - sentence1.cells
                         diffCount = sentence2.count - sentence1.count
                         newSentence = Sentence(cells=diffSet, count=diffCount)
                         self.knowledge.append(newSentence)
@@ -250,8 +254,13 @@ class MinesweeperAI():
 
         # All saves moves that are not have already been made
         safeNotMade = self.safes - self.moves_made
+
+        # If no safe moves are available, return None
+        if len(safeNotMade) == 0:
+            return None
+
         # Return random safe move
-        return random.choice(safeNotMade)
+        return random.sample(safeNotMade, 1)[0]
 
     def make_random_move(self):
         """
@@ -266,5 +275,10 @@ class MinesweeperAI():
                 allMoves.add((i, j))
 
         movesAvailable = allMoves - self.moves_made - self.mines
+
+        # No other moves are available
+        if len(movesAvailable) == 0:
+            return None
+
         # Return a random move from moves available
-        return random.choice(movesAvailable)
+        return random.sample(movesAvailable, 1)[0]
