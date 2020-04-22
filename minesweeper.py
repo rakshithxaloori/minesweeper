@@ -106,7 +106,7 @@ class Sentence():
         Returns the set of all cells in self.cells known to be mines.
         """
         # Return all cells if all cells are mines
-        if len(self.cells) == self.count and self.count > 0:
+        if (len(self.cells) == self.count) and (self.count > 0):
             return self.cells
         else:
             return None
@@ -116,7 +116,7 @@ class Sentence():
         Returns the set of all cells in self.cells known to be safe.
         """
         # Return all cells if no mines are in them
-        if self.count == 0 and len(self.cells) > 0:
+        if (self.count == 0) and len(self.cells) > 0:
             return self.cells
         else:
             return None
@@ -126,22 +126,20 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be a mine.
         """
-        # Delete the cell from self.cells
-        # Decrease the self.count
-        if cell not in self.cells:
-            return
-        self.cells.remove(cell)
-        self.count -= 1
+        if cell in self.cells:
+            # Delete the cell from self.cells
+            # Decrease the self.count
+            self.cells.remove(cell)
+            self.count -= 1
 
     def mark_safe(self, cell):
         """
         Updates internal knowledge representation given the fact that
         a cell is known to be safe.
         """
-        if cell not in self.cells:
-            return
-        # Delete the cell from self.cells
-        self.cells.remove(cell)
+        if cell in self.cells:
+            # Delete the cell from self.cells, the count remains same
+            self.cells.remove(cell)
 
 
 class MinesweeperAI():
@@ -202,45 +200,66 @@ class MinesweeperAI():
         self.mark_safe(cell)
 
         # Add left, right, up, down and diagonal cells as a sentence to the knowledge
-        if count > 0:
-            neighbourCells = set()
-            i = cell[0]
-            j = cell[1]
-            p = i-1
+        neighbourCells = set()
+        i = cell[0]
+        j = cell[1]
+        p = i-1
 
-            while p < i+2:
-                q = j-1
-                while q < j+2:
-                    if p > -1 and p < self.height and q > -1 and q < self.width:
-                        if p != i and q != j:
-                            neighbourCells.add((p, q))
-                    q += 1
-                p += 1
+        # Collect all the neighbours
+        while p < i+2:
+            q = j-1
+            while q < j+2:
+                if p > -1 and p < self.height and q > -1 and q < self.width:
+                    neighbourCells.add((p, q))
+                q += 1
+            p += 1
 
-            newSentence = Sentence(neighbourCells, count)
+        neighbourCells.remove((i, j))
+
+        # Add only if the cell has any neighbour cells
+        if len(neighbourCells) > 0:
+            newSentence = Sentence(cells=neighbourCells, count=count)
             self.knowledge.append(newSentence)
 
-        # For all sentences check known_mines, known_safes
-        for sentence in self.knowledge:
-            knownMines = sentence.known_mines()
-            knownSafes = sentence.known_safes()
-            if knownMines is not None:
-                for knownMine in knownMines:
-                    self.mines.add(knownMine)
-            elif knownSafes is not None:
-                for knownSafe in knownSafes:
-                    self.safes.add(knownSafe)
+        # Check for subsets, if found add diff(super, subset) to the knowledge
+        totalKnowledge = self.knowledge
+        totalLength = len(totalKnowledge)
+        newKnowledge = []
+        for i in range(totalLength):
+            for j in range(i+1, totalLength):
+                # Check if there are any subsets to infer
+                if totalKnowledge[i] != totalKnowledge[j] and (totalKnowledge[i].cells).issubset(totalKnowledge[j].cells):
+                    diffSet = totalKnowledge[j].cells - \
+                        totalKnowledge[i].cells
+                    diffCount = totalKnowledge[j].count - \
+                        totalKnowledge[i].count
+                    newSentence = Sentence(cells=diffSet, count=diffCount)
+                    if (newSentence not in newKnowledge) and (newSentence not in totalKnowledge):
+                        newKnowledge.append(newSentence)
 
-        # Check for subsets, if found add super-subset to the knowledge
-        for sentence1 in self.knowledge:
-            for sentence2 in self.knowledge:
-                if sentence1 != sentence2:
-                    # Check if sentence1 is subset of sentence2
-                    if sentence1.cells.issubset(sentence2.cells):
-                        diffSet = sentence2.cells - sentence1.cells
-                        diffCount = sentence2.count - sentence1.count
-                        newSentence = Sentence(cells=diffSet, count=diffCount)
-                        self.knowledge.append(newSentence)
+        # Only add to the knowledge if there's any new knowledge
+        if len(newKnowledge) > 0:
+            self.knowledge.extend(newKnowledge)
+
+        # For all sentences check known_mines, known_safes
+        knownMines = set()
+        knownSafes = set()
+
+        # Doing it this way avoids RuntimeError of the set changing it's size
+        for sentence in self.knowledge:
+            newKnownMines = sentence.known_mines()
+            newKnownSafes = sentence.known_safes()
+            if newKnownMines is not None:
+                knownMines = knownMines | newKnownMines
+            if newKnownSafes is not None:
+                knownSafes = knownSafes | newKnownSafes
+
+        if knownMines is not None:
+            for knownMine in knownMines:
+                self.mark_mine(knownMine)
+        if knownSafes is not None:
+            for knownSafe in knownSafes:
+                self.mark_safe(knownSafe)
 
     def make_safe_move(self):
         """
@@ -274,6 +293,7 @@ class MinesweeperAI():
             for j in range(self.width):
                 allMoves.add((i, j))
 
+        # Only moves available are that which have not been made yet and are not known mines
         movesAvailable = allMoves - self.moves_made - self.mines
 
         # No other moves are available
