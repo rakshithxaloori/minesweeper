@@ -210,13 +210,12 @@ class MinesweeperAI():
             q = j-1
             while q < j+2:
                 if p > -1 and p < self.height and q > -1 and q < self.width:
-                    neighbourCells.add((p, q))
+                    if (p, q) not in self.moves_made:
+                        neighbourCells.add((p, q))
                 q += 1
             p += 1
 
-        neighbourCells.remove((i, j))
-
-        # Add only if the cell has any neighbour cells
+        # Add only if the cell has any neighbour cells that haven't been explored yet
         if len(neighbourCells) > 0:
             newSentence = Sentence(cells=neighbourCells, count=count)
             self.knowledge.append(newSentence)
